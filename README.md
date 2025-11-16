@@ -30,7 +30,178 @@ A complete local RAG (Retrieval-Augmented Generation) system using llama-cpp-pyt
 - **Linux**: `sudo apt-get install tesseract-ocr`
 - **macOS**: `brew install tesseract`
 
-## Installation
+## Docker Deployment (Recommended)
+
+The easiest way to run the Local RAG System is using Docker, which automatically handles all dependencies, downloads models, and sets up the environment.
+
+### Prerequisites
+
+- **Docker**: Install [Docker Desktop](https://www.docker.com/products/docker-desktop) (Windows/macOS) or Docker Engine (Linux)
+- **Docker Compose**: Included with Docker Desktop, or install separately on Linux
+- **8GB+ RAM**: Required for the Mistral 7B model
+- **10GB+ disk space**: For Docker image, models, and data
+
+### Quick Start
+
+**1. Build the Docker image** (this will download models during build):
+
+```bash
+docker-compose build
+```
+
+**Note**: The build process will:
+- Install all system dependencies (Python, Tesseract OCR, build tools)
+- Install all Python packages
+- Download the embedding model (~90MB)
+- Download Mistral 7B Instruct v0.2 Q4_K_M model (~4.4GB)
+- This may take 15-30 minutes depending on your internet connection
+
+**2. Start the container**:
+
+```bash
+docker-compose up -d
+```
+
+**3. Access the application**:
+
+- **Web UI**: http://localhost:8000
+- **API Docs**: http://localhost:8000/docs
+- **Health Check**: http://localhost:8000/health
+
+**4. View logs**:
+
+```bash
+docker-compose logs -f
+```
+
+**5. Stop the container**:
+
+```bash
+docker-compose down
+```
+
+### Docker Configuration
+
+#### Volume Mounts
+
+The following directories are mounted as volumes for data persistence:
+
+- `./data/chroma`: Vector database (persistent storage)
+- `./data/uploads`: Uploaded documents
+- `./data/images`: Extracted images from documents
+
+Your data persists across container restarts and rebuilds.
+
+#### Resource Limits
+
+Default resource allocation (adjust in `docker-compose.yml` if needed):
+
+- **CPU**: 2-4 cores
+- **Memory**: 4-8GB
+- **Recommended**: 16GB+ system RAM for comfortable operation
+
+#### Environment Variables
+
+The Docker container uses these default settings:
+
+```bash
+# LLM Model
+LLM_MODEL_PATH=./models/mistral-7b-instruct-v0.2.Q4_K_M.gguf
+LLM_CONTEXT_SIZE=4096
+LLM_MAX_TOKENS=512
+LLM_N_THREADS=4
+LLM_N_GPU_LAYERS=0  # CPU-only by default
+
+# Embeddings
+EMBEDDING_MODEL_NAME=sentence-transformers/all-MiniLM-L6-v2
+EMBEDDING_DEVICE=cpu
+
+# Chunking
+CHUNKING_STRATEGY=smart
+CHUNK_SIZE=800
+CHUNK_OVERLAP=200
+TOP_K=8
+```
+
+To override settings, edit `docker-compose.yml` or mount a custom `.env` file:
+
+```yaml
+volumes:
+  - ./custom.env:/app/.env
+```
+
+### Alternative Docker Commands
+
+**Build without docker-compose**:
+
+```bash
+docker build -t local-rag-system .
+```
+
+**Run without docker-compose**:
+
+```bash
+docker run -d \
+  --name local-rag-system \
+  -p 8000:8000 \
+  -v $(pwd)/data/chroma:/app/data/chroma \
+  -v $(pwd)/data/uploads:/app/data/uploads \
+  -v $(pwd)/data/images:/app/data/images \
+  local-rag-system
+```
+
+### GPU Support in Docker
+
+To enable GPU acceleration in Docker, you need:
+
+1. **NVIDIA GPU**: Install [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html)
+2. **Rebuild with GPU support**: Modify Dockerfile to install llama-cpp-python with CUDA support
+3. **Update docker-compose.yml**: Add GPU configuration
+
+Example GPU configuration for docker-compose.yml:
+
+```yaml
+services:
+  rag-system:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+```
+
+Then set in environment: `LLM_N_GPU_LAYERS=99`
+
+### Troubleshooting Docker
+
+**Build fails due to network issues**:
+```bash
+# Use proxy during build
+docker build --build-arg HTTP_PROXY=http://proxy:8080 -t local-rag-system .
+```
+
+**Container exits immediately**:
+```bash
+# Check logs
+docker-compose logs
+```
+
+**Out of memory**:
+- Increase Docker Desktop memory allocation (Settings > Resources)
+- Reduce `LLM_N_THREADS` or use a smaller model
+
+**Port 8000 already in use**:
+```bash
+# Change port mapping in docker-compose.yml
+ports:
+  - "8080:8000"  # Access at http://localhost:8080
+```
+
+---
+
+## Manual Installation
 
 ### 1. Clone or Navigate to Project Directory
 
