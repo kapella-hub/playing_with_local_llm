@@ -1,0 +1,7 @@
+/models/
+/.venv
+/data
+/docs
+/index_store
+/app/__pycache__
+.idea
